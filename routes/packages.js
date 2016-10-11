@@ -5,7 +5,7 @@ var Server = mongo.Server,
     Db = mongo.Db,
     BSON = mongo.BSONPure;
 
-var ssh_conn = { host: '127.0.0.1', port: 22, username: 'inuka', password: 'Panda2010' }
+var ssh_conn = { host: '10.4.12.139', port: 22, username: 'root', password: 'inuka123' }
 
 var server = new Server('localhost', 27017, {auto_reconnect:true});
 db = new Db('packages_db', server);
@@ -36,30 +36,18 @@ exports.findById = function(req, res){
 
 exports.findAll = function(req,res) {
   console.log('Retrieving packages');
+  ssh_execute("docker", function(err, data)  {
+    console.log(data);
+    res.send(data);
+  });
 
-//start ssh code
-  var conn = new Client();
-  conn.on('ready', function() {
-    console.log('Client :: ready');
-    conn.exec('pwd', function(err, stream) {
-      if (err) throw err;
-      stream.on('close', function(code, signal) {
-        console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-        conn.end();
-      }).on('data', function(data) {
-        console.log('STDOUT: ' + data);
-      }).stderr.on('data', function(data) {
-        console.log('STDERR: ' + data);
-      });
-    });
-  }).connect(ssh_conn);
-//end ssh code
-
+/*
   db.collection('packages', function(err,collection){
     collection.find().toArray(function(err,items){
       res.send(items);
     });
   });
+  */
 };
 
 exports.addPackges = function(req,res){
@@ -111,6 +99,29 @@ exports.deletePackages = function(req, res) {
             }
         });
     });
+}
+
+
+
+/*
+Execute ssh comands from below funtion
+*/
+function ssh_execute(cmd, callback){
+    var conn = new Client();
+    conn.on('ready', function() {
+      console.log('Client :: ready');
+      conn.exec(cmd, function(err, stream) {
+        if (err) throw err;
+        stream.on('close', function(code, signal) {
+          console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+          conn.end();
+        }).on('data', function(data) {
+          callback('STDOUT', 'STDOUT: ' + data);
+        }).stderr.on('data', function(data) {
+          callback(err, 'STDERR: ' + err);
+        });
+      });
+    }).connect(ssh_conn);
 }
 
 
