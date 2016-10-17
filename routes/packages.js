@@ -1,11 +1,12 @@
 var mongo = require('mongodb');
 var Client = require('ssh2').Client;
+var obj = require("./cmd_repo.json");
 
 var Server = mongo.Server,
     Db = mongo.Db,
     BSON = mongo.BSONPure;
 
-var ssh_conn = { host: '10.4.12.139', port: 22, username: 'root', password: 'inuka123' }
+var ssh_conn = { host: '10.4.12.123', port: 22, username: 'root', password: 'inuka123' }
 
 var server = new Server('localhost', 27017, {auto_reconnect:true});
 db = new Db('packages_db', server);
@@ -26,6 +27,7 @@ db.open(function(err, db){
 exports.findById = function(req, res){
   var id = req.params.id;
   console.log('Retrieving package: ' + id);
+
   db.collection('packages', function(err, collection) {
         collection.findOne({'_id':new mongo.ObjectID(id)}, function(err, item) {
             res.send(item);
@@ -36,18 +38,39 @@ exports.findById = function(req, res){
 
 exports.findAll = function(req,res) {
   console.log('Retrieving packages');
-  ssh_execute("docker", function(err, data)  {
-    console.log(data);
-    res.send(data);
-  });
+  var a = '';
+  var b = '';
+  for(var exKey in obj) {
+    console.log("key:"+exKey+", value:"+ obj[exKey]);
+    a = a + '\n' + obj[exKey];
+  }
+  console.log(a);
+  var conn = new Client();
+  conn.on('ready', function() {
+  console.log('Client :: ready');
+  conn.shell(function(err, stream) {
+      if (err) throw err;
+      stream.on('close', function() {
+        console.log('Stream :: close');
+        conn.end();
+      }).on('data', function(data) {
+        console.log('STDOUT: ' + data);
+        b = b + '' + data ;
+      }).stderr.on('data', function(data) {
+        console.log('STDERR: ' + data);
+      });
+      stream.end(a + '\nexit\n');
+    });
+  }).connect(ssh_conn);
 
-/*
+  console.log(b);
+
   db.collection('packages', function(err,collection){
     collection.find().toArray(function(err,items){
-      res.send(items);
+      res.send(b);
     });
   });
-  */
+
 };
 
 exports.addPackges = function(req,res){
@@ -71,8 +94,8 @@ exports.updatePackages = function(req, res) {
     var id = req.params.id;
     var pkg = req.body;
     console.log('Updating package: ' + id);
-    console.log(JSON.stringify(pkg));
     db.collection('packages', function(err, collection) {
+    console.log(JSON.stringify(pkg));
         collection.update({'_id':new mongo.ObjectID(id)}, pkg, {safe:true}, function(err, result) {
             if (err) {
                 console.log('Error updating package: ' + err);
@@ -88,7 +111,6 @@ exports.updatePackages = function(req, res) {
 exports.deletePackages = function(req, res) {
     var id = req.params.id;
     console.log('Deleting package: ' + id);
-    console.log('Fuck');
     db.collection('packages', function(err, collection) {
         collection.remove({'_id':new mongo.ObjectID(id)}, {safe:true}, function(err, result) {
             if (err) {
@@ -113,7 +135,6 @@ function ssh_execute(cmd, callback){
       conn.exec(cmd, function(err, stream) {
         if (err) throw err;
         stream.on('close', function(code, signal) {
-          console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
           conn.end();
         }).on('data', function(data) {
           callback('STDOUT', 'STDOUT: ' + data);
@@ -138,7 +159,7 @@ var populateDB = function() {
       product: "snd0.9",
       created_datetime: "2016-08-14T16:00:49Z",
       download_link: "dig_ht_01_snd_0.9_platform_1.0.tar.gz",
-      log_file_link: "1.txt"
+      logs: ""
     },
     {
       client: "digicel",
@@ -147,7 +168,7 @@ var populateDB = function() {
       product: "snd1.0",
       created_datetime: "2016-08-12T16:00:49Z",
       download_link: "dig_ht_01_snd_1.0_platform_1.1.tar.gz",
-      log_file_link: "2.txt"
+      logs: ""
     }];
 
     db.collection('packages', function(err, collection) {

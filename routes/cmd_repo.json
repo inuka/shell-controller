@@ -1,0 +1,6 @@
+{
+  "cmd1": "ls -al",
+  "cmd2": "cd /home/inuka/ && pwd",
+  "cmd3": "pwd",
+  "cmd4": "docker"
+}
