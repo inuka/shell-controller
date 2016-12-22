@@ -18,6 +18,6 @@ conn.on('ready', function() {
 }).connect({
   host: '127.0.0.1',
   port: 22,
-  username: 'inuka',
-  password: 'Panda2010'
+  username: '',
+  password: ''
 });
